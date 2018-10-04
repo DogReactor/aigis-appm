@@ -1,53 +1,60 @@
 #!/usr/bin/env node
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const program = require("commander");
-const fs = require("fs");
-const path_1 = require("path");
-const archiver = require("archiver");
-const request = require("request");
-const url = require("url");
-const _path = require("path");
-const path = path_1.posix;
+
+import * as program from 'commander';
+import * as readline from 'readline'
+import * as fs from 'fs';
+import { posix } from 'path'
+import * as archiver from 'archiver'
+import * as request from 'request'
+import * as url from 'url';
+import * as _path from 'path'
+
+const path = posix;
 const host = 'player.aigis.me';
+
 class Config {
-    constructor() {
-        this.AuthorList = {};
-    }
+    public AuthorList = {}
 }
+
 class Ignore {
-    constructor(ignoreList) {
-        this.IgnoreList = [];
+    public IgnoreList: string[] = [];
+    constructor(ignoreList?: string[]) {
         if (ignoreList) {
             this.IgnoreList = ignoreList;
         }
     }
-    isIgnored(p) {
+    isIgnored(p: string) {
         return this.IgnoreList.find((v) => {
-            if (p.indexOf(v) !== -1)
-                return true;
+            if (p.indexOf(v) !== -1) return true;
             return false;
         });
     }
 }
-const config = Object.assign(new Config(), JSON.parse(fs.readFileSync(path.join(__dirname, 'config.json'), 'utf-8')));
+
+const config: Config = Object.assign(new Config(), JSON.parse(fs.readFileSync(path.join(__dirname, 'config.json'), 'utf-8')));
+
 program.version('0.1.0');
+
 program
     .command('addauthor [authorname] [password]')
     .description('add author')
     .action((authorname, password, cmd) => {
-    config.AuthorList[authorname] = password;
-    fs.writeFileSync(path.join(__dirname, 'config.json'), JSON.stringify(config));
-});
+        config.AuthorList[authorname] = password;
+        fs.writeFileSync(path.join(__dirname, 'config.json'), JSON.stringify(config));
+    })
+
 program
     .command('publish')
     .description('publish plugin')
     .action(publish);
+
 program
     .command('reg [authorname] [password]')
     .description('reg author')
     .action(reg);
+
 program.parse(process.argv);
+
 function publish(cmd) {
     // read Mainfest
     if (!fs.existsSync('manifest.json')) {
@@ -57,8 +64,7 @@ function publish(cmd) {
     let manifest;
     try {
         manifest = JSON.parse(fs.readFileSync('manifest.json', 'utf-8'));
-    }
-    catch (_a) {
+    } catch{
         console.log('Error on reading manifest.json');
         return;
     }
@@ -68,10 +74,12 @@ function publish(cmd) {
     }
     // filelist
     const basePath = process.cwd();
-    const ignore = new Ignore(fs.existsSync(path.join(basePath, '.ignore')) ?
-        fs.readFileSync(path.join(basePath, '.ignore'), 'utf-8').split('\n') : undefined);
-    const fileList = [];
-    function walk(p) {
+    const ignore = new Ignore(
+        fs.existsSync(path.join(basePath, '.ignore')) ?
+            fs.readFileSync(path.join(basePath, '.ignore'), 'utf-8').split('\n') : undefined
+    );
+    const fileList: string[] = [];
+    function walk(p: string) {
         const dirList = fs.readdirSync(p);
         dirList.forEach((v) => {
             const newPath = path.join(p, v);
@@ -80,31 +88,32 @@ function publish(cmd) {
                 // is dir
                 if (fs.statSync(newPath).isDirectory()) {
                     walk(newPath);
-                }
-                else {
+                } else {
                     fileList.push(path.relative(basePath, newPath));
                 }
             }
-        });
+        })
     }
     walk(basePath);
     if (fileList.length <= 0) {
         console.log('Fuck You');
         return;
     }
+
     // zip + request
     const archive = archiver('zip', {
         zlib: { level: 9 } // Sets the compression level.
     });
+
     archive.on('warning', function (err) {
         if (err.code === 'ENOENT') {
             // log warning
-        }
-        else {
+        } else {
             // throw error
             throw err;
         }
     });
+
     archive.on('error', function (err) {
         throw err;
     });
@@ -120,21 +129,29 @@ function publish(cmd) {
             version: manifest.version,
             pluginName: manifest.pluginName
         }
-    });
-    archive.pipe(request.post(u, (err, res) => {
-        console.log(res.body);
-    }));
+    })
+    archive.pipe(
+        request.post(u, (err, res) => {
+            console.log(res.body);
+        })
+    );
+
     fileList.forEach((v) => {
         const r = path.parse(v);
         archive.file(v, {
             name: r.base,
             prefix: r.dir
-        });
-    });
+        })
+    })
+
     archive.finalize();
+
 }
+
 function init(cmd) {
+
 }
+
 function reg(author, password, cmd) {
     const u = url.format({
         protocol: 'http',
@@ -150,4 +167,3 @@ function reg(author, password, cmd) {
         console.log(res.body);
     });
 }
-//# sourceMappingURL=index.js.map

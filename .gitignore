@@ -13,4 +13,3 @@ release-green
 config.conf
 yarn.lock
 package-lock.json
-src
