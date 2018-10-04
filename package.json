@@ -1,6 +1,6 @@
 {
   "name": "aigis-apm",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "aigis player plugin manager",
   "main": "index.js",
   "scripts": {
