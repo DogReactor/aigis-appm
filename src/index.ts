@@ -53,7 +53,28 @@ program
     .description('reg author')
     .action(reg);
 
+program
+    .command('del [plugin]')
+    .description('delete plugin in remote')
+    .action(delplugin);
+
 program.parse(process.argv);
+
+function delplugin(plugin, cmd) {
+    const u = url.format({
+        protocol: 'http',
+        hostname: host,
+        pathname: '/delplugin'
+    });
+    request.post(u, {
+        form: {
+            authorsAvaliable: config.AuthorList,
+            plugin: plugin
+        }
+    }, (err, res) => {
+        console.log(res.body);
+    });
+}
 
 function publish(cmd) {
     // read Mainfest
