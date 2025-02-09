@@ -10,7 +10,7 @@ import * as url from 'url';
 import * as _path from 'path'
 
 const path = posix;
-const host = 'player.aigis.me';
+const host = 'api.pigtv.moe';
 
 class Config {
     public AuthorList = {}
@@ -118,7 +118,7 @@ function publish(cmd) {
         throw err;
     });
     const u = url.format({
-        protocol: 'http',
+        protocol: 'https',
         hostname: host,
         pathname: '/plugins',
         query: {
@@ -154,7 +154,7 @@ function init(cmd) {
 
 function reg(author, password, cmd) {
     const u = url.format({
-        protocol: 'http',
+        protocol: 'https',
         hostname: host,
         pathname: '/reg'
     });
