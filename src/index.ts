@@ -12,6 +12,10 @@ import * as _path from 'path'
 const path = posix;
 const host = 'api.pigtv.moe';
 
+// Read package version
+const packageJson = JSON.parse(fs.readFileSync(path.join(__dirname, 'package.json'), 'utf-8'));
+const version = packageJson.version;
+
 interface IConfig {
     AuthorList: { [key: string]: string }
 }
@@ -35,11 +39,27 @@ class Ignore {
     }
 }
 
-const config: Config = Object.assign(new Config(), JSON.parse(fs.readFileSync(path.join(__dirname, 'config.json'), 'utf-8')));
+// Initialize config
+const configPath = path.join(__dirname, 'config.json');
+let config: Config;
+
+if (!fs.existsSync(configPath)) {
+    config = new Config();
+    fs.writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf-8');
+} else {
+    try {
+        const configData = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+        config = Object.assign(new Config(), configData);
+    } catch (error) {
+        console.error('Error reading config file, creating new one');
+        config = new Config();
+        fs.writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf-8');
+    }
+}
 
 const program = new Command();
 
-program.version('0.1.0');
+program.version(version);
 
 program
     .command('addauthor')

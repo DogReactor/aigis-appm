@@ -1,10 +1,11 @@
 {
   "name": "aigis-apm",
-  "version": "1.0.1",
+  "version": "1.0.4",
   "description": "aigis player plugin manager",
   "main": "index.js",
   "scripts": {
-    "build": "tsc"
+    "build": "tsc",
+    "prepublishOnly": "npm run build"
   },
   "author": "yukimir",
   "license": "MIT",
@@ -19,5 +20,23 @@
   },
   "devDependencies": {
     "@types/node": "^14.18.63"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yukimir/aigis-appm.git"
+  },
+  "keywords": [
+    "aigis",
+    "plugin",
+    "manager",
+    "cli"
+  ],
+  "files": [
+    "index.js",
+    "index.d.ts",
+    "index.js.map",
+    "package.json",
+    "README.md",
+    "LICENSE"
+  ]
 }

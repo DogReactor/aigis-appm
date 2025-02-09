@@ -32,6 +32,9 @@ const url = __importStar(require("url"));
 const _path = __importStar(require("path"));
 const path = path_1.posix;
 const host = 'api.pigtv.moe';
+// Read package version
+const packageJson = JSON.parse(fs.readFileSync(path.join(__dirname, 'package.json'), 'utf-8'));
+const version = packageJson.version;
 class Config {
     constructor() {
         this.AuthorList = {};
@@ -52,9 +55,26 @@ class Ignore {
         });
     }
 }
-const config = Object.assign(new Config(), JSON.parse(fs.readFileSync(path.join(__dirname, 'config.json'), 'utf-8')));
+// Initialize config
+const configPath = path.join(__dirname, 'config.json');
+let config;
+if (!fs.existsSync(configPath)) {
+    config = new Config();
+    fs.writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf-8');
+}
+else {
+    try {
+        const configData = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+        config = Object.assign(new Config(), configData);
+    }
+    catch (error) {
+        console.error('Error reading config file, creating new one');
+        config = new Config();
+        fs.writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf-8');
+    }
+}
 const program = new commander_1.Command();
-program.version('0.1.0');
+program.version(version);
 program
     .command('addauthor')
     .argument('[authorname]', 'author name')
