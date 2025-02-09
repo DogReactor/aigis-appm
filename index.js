@@ -9,7 +9,7 @@ const request = require("request");
 const url = require("url");
 const _path = require("path");
 const path = path_1.posix;
-const host = 'player.aigis.me';
+const host = 'player-plugin.pigtv.moe';
 class Config {
     constructor() {
         this.AuthorList = {};
