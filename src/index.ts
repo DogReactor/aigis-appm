@@ -1,19 +1,23 @@
 #!/usr/bin/env node
 
-import * as program from 'commander';
+import { Command } from 'commander';
 import * as readline from 'readline'
 import * as fs from 'fs';
 import { posix } from 'path'
-import * as archiver from 'archiver'
-import * as request from 'request'
+import AdmZip from 'adm-zip'
+import axios from 'axios'
 import * as url from 'url';
 import * as _path from 'path'
 
 const path = posix;
 const host = 'api.pigtv.moe';
 
-class Config {
-    public AuthorList = {}
+interface IConfig {
+    AuthorList: { [key: string]: string }
+}
+
+class Config implements IConfig {
+    public AuthorList: { [key: string]: string } = {}
 }
 
 class Ignore {
@@ -33,15 +37,19 @@ class Ignore {
 
 const config: Config = Object.assign(new Config(), JSON.parse(fs.readFileSync(path.join(__dirname, 'config.json'), 'utf-8')));
 
+const program = new Command();
+
 program.version('0.1.0');
 
 program
-    .command('addauthor [authorname] [password]')
+    .command('addauthor')
+    .argument('[authorname]', 'author name')
+    .argument('[password]', 'password')
     .description('add author')
-    .action((authorname, password, cmd) => {
+    .action((authorname: string, password: string) => {
         config.AuthorList[authorname] = password;
         fs.writeFileSync(path.join(__dirname, 'config.json'), JSON.stringify(config));
-    })
+    });
 
 program
     .command('publish')
@@ -49,19 +57,29 @@ program
     .action(publish);
 
 program
-    .command('reg [authorname] [password]')
+    .command('reg')
+    .argument('[authorname]', 'author name')
+    .argument('[password]', 'password')
     .description('reg author')
     .action(reg);
 
-program.parse(process.argv);
+program.parse();
 
-function publish(cmd) {
+interface IManifest {
+    name?: string;
+    author: string;
+    description?: string;
+    version?: string;
+    pluginName?: string;
+}
+
+function publish(_cmd: unknown): void {
     // read Mainfest
     if (!fs.existsSync('manifest.json')) {
         console.log('This is not a AigisPlayer Plugin');
         return;
     }
-    let manifest;
+    let manifest: IManifest;
     try {
         manifest = JSON.parse(fs.readFileSync('manifest.json', 'utf-8'));
     } catch{
@@ -100,23 +118,18 @@ function publish(cmd) {
         return;
     }
 
-    // zip + request
-    const archive = archiver('zip', {
-        zlib: { level: 9 } // Sets the compression level.
+    // Create zip file
+    const zip = new AdmZip();
+    
+    fileList.forEach((v) => {
+        const r = path.parse(v);
+        zip.addLocalFile(v, r.dir);
     });
 
-    archive.on('warning', function (err) {
-        if (err.code === 'ENOENT') {
-            // log warning
-        } else {
-            // throw error
-            throw err;
-        }
-    });
+    // Get zip buffer
+    const zipBuffer = zip.toBuffer();
 
-    archive.on('error', function (err) {
-        throw err;
-    });
+    // Upload zip file
     const u = url.format({
         protocol: 'https',
         hostname: host,
@@ -129,41 +142,47 @@ function publish(cmd) {
             version: manifest.version,
             pluginName: manifest.pluginName
         }
+    });
+
+    // Send request
+    axios.post(u, zipBuffer, {
+        headers: {
+            'Content-Type': 'application/zip'
+        }
     })
-    archive.pipe(
-        request.post(u, (err, res) => {
-            console.log(res.body);
-        })
-    );
-
-    fileList.forEach((v) => {
-        const r = path.parse(v);
-        archive.file(v, {
-            name: r.base,
-            prefix: r.dir
-        })
+    .then(response => {
+        console.log(response.data);
     })
-
-    archive.finalize();
-
+    .catch(error => {
+        if (axios.isAxiosError(error)) {
+            console.error('Error uploading plugin:', error.response?.data || error.message);
+        } else {
+            console.error('Error uploading plugin:', error instanceof Error ? error.message : 'Unknown error');
+        }
+    });
 }
 
-function init(cmd) {
-
+function init(_cmd: unknown): void {
 }
 
-function reg(author, password, cmd) {
+async function reg(author: string, password: string, _cmd: unknown): Promise<void> {
     const u = url.format({
         protocol: 'https',
         hostname: host,
         pathname: '/reg'
     });
-    request.post(u, {
-        form: {
-            author: author,
-            password: password
+    
+    try {
+        const response = await axios.post(u, {
+            author,
+            password
+        });
+        console.log(response.data);
+    } catch (error) {
+        if (axios.isAxiosError(error)) {
+            console.error('Error registering:', error.response?.data || error.message);
+        } else {
+            console.error('Error registering:', error instanceof Error ? error.message : 'Unknown error');
         }
-    }, (err, res) => {
-        console.log(res.body);
-    });
+    }
 }

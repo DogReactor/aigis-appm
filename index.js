@@ -1,15 +1,37 @@
 #!/usr/bin/env node
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
-const program = require("commander");
-const fs = require("fs");
+const commander_1 = require("commander");
+const fs = __importStar(require("fs"));
 const path_1 = require("path");
-const archiver = require("archiver");
-const request = require("request");
-const url = require("url");
-const _path = require("path");
+const adm_zip_1 = __importDefault(require("adm-zip"));
+const axios_1 = __importDefault(require("axios"));
+const url = __importStar(require("url"));
+const _path = __importStar(require("path"));
 const path = path_1.posix;
-const host = 'player-plugin.pigtv.moe';
+const host = 'api.pigtv.moe';
 class Config {
     constructor() {
         this.AuthorList = {};
@@ -31,11 +53,14 @@ class Ignore {
     }
 }
 const config = Object.assign(new Config(), JSON.parse(fs.readFileSync(path.join(__dirname, 'config.json'), 'utf-8')));
+const program = new commander_1.Command();
 program.version('0.1.0');
 program
-    .command('addauthor [authorname] [password]')
+    .command('addauthor')
+    .argument('[authorname]', 'author name')
+    .argument('[password]', 'password')
     .description('add author')
-    .action((authorname, password, cmd) => {
+    .action((authorname, password) => {
     config.AuthorList[authorname] = password;
     fs.writeFileSync(path.join(__dirname, 'config.json'), JSON.stringify(config));
 });
@@ -44,11 +69,13 @@ program
     .description('publish plugin')
     .action(publish);
 program
-    .command('reg [authorname] [password]')
+    .command('reg')
+    .argument('[authorname]', 'author name')
+    .argument('[password]', 'password')
     .description('reg author')
     .action(reg);
-program.parse(process.argv);
-function publish(cmd) {
+program.parse();
+function publish(_cmd) {
     // read Mainfest
     if (!fs.existsSync('manifest.json')) {
         console.log('This is not a AigisPlayer Plugin');
@@ -92,24 +119,17 @@ function publish(cmd) {
         console.log('Fuck You');
         return;
     }
-    // zip + request
-    const archive = archiver('zip', {
-        zlib: { level: 9 } // Sets the compression level.
+    // Create zip file
+    const zip = new adm_zip_1.default();
+    fileList.forEach((v) => {
+        const r = path.parse(v);
+        zip.addLocalFile(v, r.dir);
     });
-    archive.on('warning', function (err) {
-        if (err.code === 'ENOENT') {
-            // log warning
-        }
-        else {
-            // throw error
-            throw err;
-        }
-    });
-    archive.on('error', function (err) {
-        throw err;
-    });
+    // Get zip buffer
+    const zipBuffer = zip.toBuffer();
+    // Upload zip file
     const u = url.format({
-        protocol: 'http',
+        protocol: 'https',
         hostname: host,
         pathname: '/plugins',
         query: {
@@ -121,33 +141,48 @@ function publish(cmd) {
             pluginName: manifest.pluginName
         }
     });
-    archive.pipe(request.post(u, (err, res) => {
-        console.log(res.body);
-    }));
-    fileList.forEach((v) => {
-        const r = path.parse(v);
-        archive.file(v, {
-            name: r.base,
-            prefix: r.dir
-        });
+    // Send request
+    axios_1.default.post(u, zipBuffer, {
+        headers: {
+            'Content-Type': 'application/zip'
+        }
+    })
+        .then(response => {
+        console.log(response.data);
+    })
+        .catch(error => {
+        var _a;
+        if (axios_1.default.isAxiosError(error)) {
+            console.error('Error uploading plugin:', ((_a = error.response) === null || _a === void 0 ? void 0 : _a.data) || error.message);
+        }
+        else {
+            console.error('Error uploading plugin:', error instanceof Error ? error.message : 'Unknown error');
+        }
     });
-    archive.finalize();
 }
-function init(cmd) {
+function init(_cmd) {
 }
-function reg(author, password, cmd) {
+async function reg(author, password, _cmd) {
+    var _a;
     const u = url.format({
-        protocol: 'http',
+        protocol: 'https',
         hostname: host,
         pathname: '/reg'
     });
-    request.post(u, {
-        form: {
-            author: author,
-            password: password
+    try {
+        const response = await axios_1.default.post(u, {
+            author,
+            password
+        });
+        console.log(response.data);
+    }
+    catch (error) {
+        if (axios_1.default.isAxiosError(error)) {
+            console.error('Error registering:', ((_a = error.response) === null || _a === void 0 ? void 0 : _a.data) || error.message);
         }
-    }, (err, res) => {
-        console.log(res.body);
-    });
+        else {
+            console.error('Error registering:', error instanceof Error ? error.message : 'Unknown error');
+        }
+    }
 }
 //# sourceMappingURL=index.js.map

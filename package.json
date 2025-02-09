@@ -12,12 +12,12 @@
     "apm": "./index.js"
   },
   "dependencies": {
-    "archiver": "^3.0.0",
-    "commander": "^2.18.0",
-    "request": "^2.88.0"
+    "@types/adm-zip": "^0.5.7",
+    "adm-zip": "^0.5.10",
+    "axios": "^1.6.7",
+    "commander": "^11.1.0"
   },
   "devDependencies": {
-    "@types/archiver": "^2.1.2",
-    "@types/request": "^2.47.1"
+    "@types/node": "^14.18.63"
   }
 }
